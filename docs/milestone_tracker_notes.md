@@ -96,3 +96,9 @@ React Hub Form               Express server.js            MissionManager (Orches
     *   [x] Step 2.7: Sequential Orchestration (`missionManager.js`).
     *   [x] Step 2.8: Hook up `MissionManager` inside `server.js` routes.
     *   [x] Step 2.9: Render real generated slide text outputs in React UI.
+*   [ ] **Milestone 3: Creative & Image Generation Slice**
+    *   [ ] Step 3.1: Build Agent 5: Creative Director Agent (`backend/src/agents/creativeAgent.js`)
+    *   [ ] Step 3.2: Build Agent 6: Image Prompt Director Agent calling DALL-E 3 API (`backend/src/agents/imageAgent.js`)
+    *   [ ] Step 3.3: Build Agent 7: Layout Designer Agent (`backend/src/agents/layoutAgent.js`)
+    *   [ ] Step 3.4: Integrate Agents 5-7 into the `MissionManager` orchestrator and rescale progress logs
+    *   [ ] Step 3.5: Update React frontend to display generated DALL-E image slides (`frontend/src/App.jsx`)

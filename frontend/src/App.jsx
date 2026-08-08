@@ -326,24 +326,41 @@ export default function App() {
                     <h5 className="mb-4 text-primary">Generated Slides</h5>
                     {slides.map((slide, idx) => (
                       <div key={idx} className="mb-4 p-3 rounded" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <h6 className="text-primary mb-3">Slide {idx + 1}</h6>
-                        <div className="mb-3">
-                          <label className="small text-secondary">Title</label>
-                          <input 
-                            type="text" 
-                            className="form-control form-control-custom"
-                            value={slide.title}
-                            onChange={(e) => handleEditSlide(idx, 'title', e.target.value)}
-                          />
-                        </div>
-                        <div className="mb-0">
-                          <label className="small text-secondary">Body Text</label>
-                          <textarea 
-                            rows="2" 
-                            className="form-control form-control-custom"
-                            value={slide.body}
-                            onChange={(e) => handleEditSlide(idx, 'body', e.target.value)}
-                          />
+                        <div className="row align-items-center">
+                          <div className="col-md-8">
+                            <h6 className="text-primary mb-3">Slide {idx + 1}</h6>
+                            <div className="mb-3">
+                              <label className="small text-secondary">Title</label>
+                              <input 
+                                type="text" 
+                                className="form-control form-control-custom"
+                                value={slide.title}
+                                onChange={(e) => handleEditSlide(idx, 'title', e.target.value)}
+                              />
+                            </div>
+                            <div className="mb-0">
+                              <label className="small text-secondary">Body Text</label>
+                              <textarea 
+                                rows="2" 
+                                className="form-control form-control-custom"
+                                value={slide.body}
+                                onChange={(e) => handleEditSlide(idx, 'body', e.target.value)}
+                              />
+                            </div>
+                          </div>
+                          <div className="col-md-4 text-center mt-3 mt-md-0">
+                            <label className="small text-secondary d-block mb-2">Visual Asset</label>
+                            {slide.image ? (
+                              <img 
+                                src={slide.image} 
+                                alt={`Slide ${idx + 1} Visual`} 
+                                className="img-fluid rounded" 
+                                style={{ maxHeight: '140px', border: '1px solid var(--border-color)', objectFit: 'cover' }}
+                              />
+                            ) : (
+                              <div className="text-secondary small py-4 border border-dashed rounded">No Image</div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
