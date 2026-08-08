@@ -23,7 +23,8 @@ async function runActualMission(missionId, topic, platform, io, activeMissions) 
       progress: 0,
       currentAgentIndex: 0,
       logs: [],
-      slides: []
+      slides: [],
+      agentOutputs: {} // Store individual outputs here
     };
     const mission = activeMissions[missionId];
 
@@ -35,9 +36,11 @@ async function runActualMission(missionId, topic, platform, io, activeMissions) 
     io.to(missionId).emit('mission-log', { log: '[Research Agent] Researching scriptures...', progress: 10 });
     
     const researchOutput = await researchAgent.generateResearch(topic);
+    mission.agentOutputs[0] = researchOutput;
     mission.logs.push('[Research Agent] Scriptural research compiled successfully.');
+    
     io.to(missionId).emit('mission-log', { log: '[Research Agent] Done compiling Knowledge Brief.', progress: 25 });
-    io.to(missionId).emit('agent-complete', { agentIndex: 0 });
+    io.to(missionId).emit('agent-complete', { agentIndex: 0, agentName: 'Research Agent', output: researchOutput });
 
     // ==========================================
     // 2. Narrative Architect Agent (25% -> 50%)
@@ -47,9 +50,11 @@ async function runActualMission(missionId, topic, platform, io, activeMissions) 
     io.to(missionId).emit('mission-log', { log: '[Narrative Architect] Designing story outline...', progress: 35 });
     
     const narrativeOutput = await narrativeAgent.generateNarrative(researchOutput);
+    mission.agentOutputs[1] = narrativeOutput;
     mission.logs.push('[Narrative Architect] Narrative arc outlined.');
+    
     io.to(missionId).emit('mission-log', { log: '[Narrative Architect] Narrative Blueprint completed.', progress: 50 });
-    io.to(missionId).emit('agent-complete', { agentIndex: 1 });
+    io.to(missionId).emit('agent-complete', { agentIndex: 1, agentName: 'Narrative Architect', output: narrativeOutput });
 
     // ==========================================
     // 3. Carousel Planner Agent (50% -> 75%)
@@ -59,9 +64,11 @@ async function runActualMission(missionId, topic, platform, io, activeMissions) 
     io.to(missionId).emit('mission-log', { log: '[Carousel Planner] Mapping narrative to slides...', progress: 60 });
     
     const planOutput = await plannerAgent.generatePlan(narrativeOutput);
+    mission.agentOutputs[2] = planOutput;
     mission.logs.push('[Carousel Planner] Slide structure planned.');
+    
     io.to(missionId).emit('mission-log', { log: '[Carousel Planner] Slide-by-slide storyboard drafted.', progress: 75 });
-    io.to(missionId).emit('agent-complete', { agentIndex: 2 });
+    io.to(missionId).emit('agent-complete', { agentIndex: 2, agentName: 'Carousel Planner', output: planOutput });
 
     // ==========================================
     // 4. Carousel Writer Agent (75% -> 100%)
@@ -71,6 +78,7 @@ async function runActualMission(missionId, topic, platform, io, activeMissions) 
     io.to(missionId).emit('mission-log', { log: '[Carousel Writer] Drafting copy deck in structured format...', progress: 85 });
     
     const copyDeck = await writerAgent.generateCopy(planOutput);
+    mission.agentOutputs[3] = copyDeck;
     mission.logs.push('[Carousel Writer] Finished copywriting slides and caption.');
     
     // Attach details from JSON response
@@ -86,7 +94,7 @@ async function runActualMission(missionId, topic, platform, io, activeMissions) 
     }));
 
     io.to(missionId).emit('mission-log', { log: '[Carousel Writer] Completed slide writing.', progress: 100 });
-    io.to(missionId).emit('agent-complete', { agentIndex: 3 });
+    io.to(missionId).emit('agent-complete', { agentIndex: 3, agentName: 'Carousel Writer', output: copyDeck });
 
     // Finish Mission
     mission.status = 'Completed';

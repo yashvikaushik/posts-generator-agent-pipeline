@@ -77,6 +77,9 @@ React Hub Form               Express server.js            MissionManager (Orches
     *   **Research, Narrative, and Planner (Markdown output):** These agents write natural summaries, tables, and outlines intended to give rich context to the next agents. They do not need to be parsed by code, only read by the next LLM call.
     *   **Carousel Writer (JSON output):** The writer produces the actual text that the React UI needs to display in editable form boxes. By outputting JSON, we can safely run `JSON.parse()` on the server and send the slide objects directly to the React state.
 
+### Q3: How are individual agent outputs streamed and captured in the UI Control Room?
+*   **Answer:** We updated `missionManager.js` to store each agent's output in the `agentOutputs` field of the mission object, and then emitted it with the `agent-complete` WebSocket event. On the client side, React captures these outputs in the `agentOutputs` state dictionary and activates the "View Output" button on each agent's status card. Clicking the button opens a Bootstrap-styled overlay modal showing the formatted output.
+
 ---
 
 ## 4. Current Milestone Status Tracker

@@ -15,6 +15,8 @@ export default function App() {
   const [progress, setProgress] = useState(0);
   const [currentAgentIndex, setCurrentAgentIndex] = useState(-1);
   const [logs, setLogs] = useState([]);
+  const [agentOutputs, setAgentOutputs] = useState({}); // Stores output text/JSON from each agent
+  const [selectedOutput, setSelectedOutput] = useState(null); // Active output shown in Modal
   
   // Results from generation
   const [slides, setSlides] = useState([]);
@@ -67,11 +69,31 @@ export default function App() {
         socketRef.current.emit('join-mission', data.missionId);
         console.log("the client is connected and mission has been joined");
         
+        // Load initial state if joining an active/completed mission
+        socketRef.current.on('mission-history', (history) => {
+          setLogs(history.logs);
+          setProgress(history.progress);
+          setStatus(history.status);
+          setCurrentAgentIndex(history.currentAgentIndex);
+          if (history.agentOutputs) {
+            setAgentOutputs(history.agentOutputs);
+          }
+          if (history.status === 'Completed') {
+            setSlides(history.slides);
+            setCaption(history.caption);
+            setHashtags(history.hashtags);
+          }
+        });
+
         console.log("starting the agent");
         socketRef.current.on('agent-start', ({ agentIndex }) => {
           setCurrentAgentIndex(agentIndex);
           console.log(agentIndex);
           setStatus('Running');
+        });
+
+        socketRef.current.on('agent-complete', ({ agentIndex, output }) => {
+          setAgentOutputs((prev) => ({ ...prev, [agentIndex]: output }));
         });
 
         socketRef.current.on('mission-log', ({ log, progress }) => {
@@ -223,15 +245,53 @@ export default function App() {
                   <div className="progress-bar bg-primary" role="progressbar" style={{ width: `${progress}%` }}></div>
                 </div>
 
-                <div className="row text-center mb-4">
-                  {agentsList.map((agentName, idx) => (
-                    <div key={idx} className="col">
-                      <div className={`p-2 rounded ${currentAgentIndex === idx ? 'bg-primary text-white' : idx < currentAgentIndex ? 'text-success' : 'text-secondary'}`} style={{ fontSize: '0.8rem', background: 'rgba(255,255,255,0.02)' }}>
-                        <div className="fw-bold">{idx + 1}</div>
-                        <div>{agentName.split(' ')[0]}</div>
+                <div className="row g-3 mb-4">
+                  {agentsList.map((agentName, idx) => {
+                    const isCompleted = idx < currentAgentIndex || (status === 'Completed' && idx < 4);
+                    const isActive = currentAgentIndex === idx && status === 'Running';
+                    const hasOutput = agentOutputs[idx] !== undefined;
+
+                    return (
+                      <div key={idx} className="col-md-3">
+                        <div className="card h-100 border-0 p-3" style={{ 
+                          background: isActive ? 'rgba(99, 102, 241, 0.1)' : 'rgba(255, 255, 255, 0.02)',
+                          border: isActive ? '1px solid var(--accent-color)' : '1px solid var(--border-color)',
+                          borderRadius: '12px'
+                        }}>
+                          <div className="d-flex justify-content-between align-items-center mb-2">
+                            <span className="badge bg-secondary" style={{ fontSize: '0.7rem' }}>Agent {idx + 1}</span>
+                            <span className="small" style={{ 
+                              color: isCompleted ? 'var(--success-color)' : isActive ? 'var(--warning-color)' : 'var(--text-secondary)',
+                              fontSize: '0.75rem' 
+                            }}>
+                              {isCompleted ? '● Completed' : isActive ? '● Running' : '○ Waiting'}
+                            </span>
+                          </div>
+                          <h6 className="text-white mb-2" style={{ fontSize: '0.9rem' }}>{agentName}</h6>
+                          
+                          {hasOutput ? (
+                            <button 
+                              type="button" 
+                              className="btn btn-sm btn-outline-primary mt-auto w-100 py-1"
+                              style={{ fontSize: '0.75rem' }}
+                              onClick={() => setSelectedOutput({ name: agentName, content: agentOutputs[idx] })}
+                            >
+                              👁️ View Output
+                            </button>
+                          ) : (
+                            <button 
+                              type="button" 
+                              className="btn btn-sm btn-outline-secondary mt-auto w-100 py-1" 
+                              style={{ fontSize: '0.75rem' }} 
+                              disabled
+                            >
+                              Waiting...
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <h6 className="text-secondary mb-2">Live Agent Logs</h6>
@@ -343,6 +403,37 @@ export default function App() {
                 >
                   📥 Export Now (ZIP)
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* Modal for viewing agent output */}
+          {selectedOutput && (
+            <div className="modal show d-block" style={{ backgroundColor: 'rgba(0, 0, 0, 0.85)', zIndex: 1050 }} tabIndex="-1">
+              <div className="modal-dialog modal-lg modal-dialog-centered">
+                <div className="modal-content text-white" style={{ background: '#11101a', border: '1px solid var(--border-color)', borderRadius: '16px' }}>
+                  <div className="modal-header border-0 pb-0">
+                    <h5 className="modal-title text-primary">📄 {selectedOutput.name} Output</h5>
+                    <button type="button" className="btn-close btn-close-white" onClick={() => setSelectedOutput(null)}></button>
+                  </div>
+                  <div className="modal-body">
+                    <pre className="p-3 rounded text-light" style={{ 
+                      background: 'rgba(0, 0, 0, 0.3)', 
+                      maxHeight: '400px', 
+                      overflowY: 'auto', 
+                      whiteSpace: 'pre-wrap', 
+                      fontFamily: 'Courier New, monospace',
+                      fontSize: '0.9rem'
+                    }}>
+                      {typeof selectedOutput.content === 'object' 
+                        ? JSON.stringify(selectedOutput.content, null, 2) 
+                        : selectedOutput.content}
+                    </pre>
+                  </div>
+                  <div className="modal-footer border-0 pt-0">
+                    <button type="button" className="btn btn-secondary" onClick={() => setSelectedOutput(null)}>Close</button>
+                  </div>
+                </div>
               </div>
             </div>
           )}
