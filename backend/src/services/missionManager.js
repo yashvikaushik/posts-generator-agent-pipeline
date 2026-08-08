@@ -64,7 +64,7 @@ async function runActualMission(missionId, topic, platform, io, activeMissions) 
     io.to(missionId).emit('agent-start', { agentIndex: 2, agentName: 'Carousel Planner' });
     io.to(missionId).emit('mission-log', { log: '[Carousel Planner] Outlining slides blueprints...', progress: 35 });
     
-    const planOutput = await plannerAgent.generatePlan(narrativeOutput);
+    const planOutput = await plannerAgent.generatePlan(narrativeOutput, researchOutput);
     mission.agentOutputs[2] = planOutput;
     mission.logs.push('[Carousel Planner] Slide layout structure planned.');
     io.to(missionId).emit('mission-log', { log: '[Carousel Planner] Storyboard drafted.', progress: 42 });

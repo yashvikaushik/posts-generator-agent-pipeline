@@ -5,9 +5,15 @@ class CarouselPlannerAgent extends BaseAgent {
     super('Carousel Planner', 'agent-3-carousel-planner');
   }
 
-  async generatePlan(narrativeBlueprint) {
-    // This agent reads the narrative and maps it to a slide structure plan (Markdown format)
-    return await this.execute(`Narrative Blueprint:\n${narrativeBlueprint}`, false);
+  async generatePlan(narrativeBlueprint, knowledgeBrief) {
+    const inputContent = `
+    Narrative Blueprint (Authoritative Story Arc):
+    ${narrativeBlueprint}
+
+    Reference Knowledge Brief (Factual Scripture & Translation):
+    ${knowledgeBrief}
+    `;
+    return await this.execute(inputContent, false);
   }
 }
 
