@@ -38,16 +38,17 @@ class BaseAgent {
    * Executes the agent's prompt using OpenAI GPT models.
    * @param {string} userInput - The input topic or previous agent's output.
    * @param {boolean} jsonMode - Set to true if this agent must output structured JSON data.
+   * @param {number} temperature - Controlling creativity/hallucinations (default 0.2 for high fidelity)
    * @returns {Promise<string|object>} - The completed content from GPT-4o.
    */
-  async execute(userInput, jsonMode = false) {
+  async execute(userInput, jsonMode = false, temperature = 0.2) {
     try {
       // Load the prompt if not already cached
       if (!this.systemPrompt) {
         this.loadPrompt();
       }
 
-      console.log(`[${this.name}] Starting execution...`);
+      console.log(`[${this.name}] Starting execution with temperature ${temperature}...`);
       
       const options = {
         model: 'gpt-4o-mini',
@@ -55,7 +56,7 @@ class BaseAgent {
           { role: 'system', content: this.systemPrompt },
           { role: 'user', content: userInput }
         ],
-        temperature: 0.7
+        temperature: temperature
       };
 
       if (jsonMode) {
