@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const openai = require('../config/openai');
+const openai = require('../config/openrouter');
 
 class BaseAgent {
   /**
@@ -35,11 +35,11 @@ class BaseAgent {
   }
 
   /**
-   * Executes the agent's prompt using OpenAI GPT models.
+   * Executes the agent's prompt using OpenRouter.
    * @param {string} userInput - The input topic or previous agent's output.
    * @param {boolean} jsonMode - Set to true if this agent must output structured JSON data.
-   * @param {number} temperature - Controlling creativity/hallucinations (default 0.2 for high fidelity)
-   * @returns {Promise<string|object>} - The completed content from GPT-4o.
+   * @param {number} temperature - Controlling creativity/hallucinations (default 0.2)
+   * @returns {Promise<string|object>} - The completed content from OpenRouter.
    */
   async execute(userInput, jsonMode = false, temperature = 0.2) {
     try {
@@ -48,31 +48,32 @@ class BaseAgent {
         this.loadPrompt();
       }
 
-      console.log(`[${this.name}] Starting execution with temperature ${temperature}...`);
+      console.log(`[${this.name}] Starting execution on OpenRouter (openrouter/free) with temperature ${temperature}...`);
       
-      const options = {
-        model: 'gpt-4o-mini',
+      const response = await openai.chat.completions.create({
+        model: 'openrouter/free',
         messages: [
-          { role: 'system', content: this.systemPrompt },
-          { role: 'user', content: userInput }
+          { role: 'user', content: `${this.systemPrompt}\n\nUser Input:\n${userInput}` }
         ],
-        temperature: temperature
-      };
+        temperature: temperature,
+        response_format: jsonMode ? { type: 'json_object' } : undefined
+      });
+
+      const text = response.choices[0].message.content;
 
       if (jsonMode) {
-        options.response_format = { type: 'json_object' };
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          console.error(`[${this.name}] Failed to parse JSON response:`, text);
+          throw new Error('Agent failed to return a parseable JSON block');
+        }
       }
 
-      const response = await openai.chat.completions.create(options);
-      const resultText = response.choices[0].message.content.trim();
-
-      if (jsonMode) {
-        return JSON.parse(resultText);
-      }
-      return resultText;
+      return text;
     } catch (error) {
-      console.error(`Error in agent [${this.name}]:`, error);
-      throw new Error(`Agent [${this.name}] execution failed: ${error.message}`);
+      console.error(`[${this.name}] Error during execution:`, error);
+      throw error;
     }
   }
 }

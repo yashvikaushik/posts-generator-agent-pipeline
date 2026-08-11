@@ -4,3 +4,4 @@ dist/
 build/
 .DS_Store
 .system_generated/
+backend/cache/

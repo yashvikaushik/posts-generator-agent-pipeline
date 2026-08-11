@@ -6,6 +6,13 @@ class CarouselPlannerAgent extends BaseAgent {
   }
 
   async generatePlan(narrativeBlueprint, knowledgeBrief) {
+
+    console.log("AGENT 1 OUTPUT:");
+    console.log(knowledgeBrief);
+
+    console.log("AGENT 2 OUTPUT:");
+    console.log(narrativeBlueprint);
+
     const inputContent = `
     INSTRUCTION: You are the Carousel Execution Planner. You must plan the slides based STRICTLY on the Narrative Blueprint and Reference Knowledge Brief below. 
     Do NOT introduce any external deities, names, or scriptures (for example, do NOT mention Chamunda or other deities if they are not explicitly present in the Narrative Blueprint). 
@@ -17,6 +24,9 @@ class CarouselPlannerAgent extends BaseAgent {
     Reference Knowledge Brief (Factual Scripture & Translation):
     ${knowledgeBrief}
     `;
+
+    console.log("========== EXACT AGENT 3 USER PROMPT ==========");
+    console.log(inputContent);
     return await this.execute(inputContent, false, 0.1);
   }
 }

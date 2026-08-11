@@ -5,6 +5,7 @@ const writerAgent = require('../agents/writerAgent');
 const creativeAgent = require('../agents/creativeAgent');
 const imageAgent = require('../agents/imageAgent');
 const layoutAgent = require('../agents/layoutAgent');
+const { getMissionCache, saveAgentOutputToCache } = require('./cacheManager');
 
 /**
  * Runs the active, 7-agent sequential content pipeline.
@@ -31,6 +32,9 @@ async function runActualMission(missionId, topic, platform, io, activeMissions) 
     };
     const mission = activeMissions[missionId];
 
+    // Load existing cache for this mission
+    const cache = getMissionCache(missionId);
+
     // ==========================================
     // 1. Sanskrit Research Agent (0% -> 14%)
     // ==========================================
@@ -38,7 +42,15 @@ async function runActualMission(missionId, topic, platform, io, activeMissions) 
     io.to(missionId).emit('agent-start', { agentIndex: 0, agentName: 'Research Agent' });
     io.to(missionId).emit('mission-log', { log: '[Research Agent] Analyzing scripture references...', progress: 5 });
     
-    const researchOutput = await researchAgent.generateResearch(topic);
+    let researchOutput;
+    if (cache[0]) {
+      console.log(`[MissionManager] Loaded Agent 0 output from cache.`);
+      researchOutput = cache[0];
+    } else {
+      researchOutput = await researchAgent.generateResearch(topic);
+      saveAgentOutputToCache(missionId, 0, researchOutput);
+    }
+    
     mission.agentOutputs[0] = researchOutput;
     mission.logs.push('[Research Agent] Scriptural research compiled successfully.');
     io.to(missionId).emit('mission-log', { log: '[Research Agent] Done compiling Knowledge Brief.', progress: 14 });
@@ -51,7 +63,15 @@ async function runActualMission(missionId, topic, platform, io, activeMissions) 
     io.to(missionId).emit('agent-start', { agentIndex: 1, agentName: 'Narrative Architect' });
     io.to(missionId).emit('mission-log', { log: '[Narrative Architect] Structuring story logic...', progress: 20 });
     
-    const narrativeOutput = await narrativeAgent.generateNarrative(researchOutput);
+    let narrativeOutput;
+    if (cache[1]) {
+      console.log(`[MissionManager] Loaded Agent 1 output from cache.`);
+      narrativeOutput = cache[1];
+    } else {
+      narrativeOutput = await narrativeAgent.generateNarrative(researchOutput);
+      saveAgentOutputToCache(missionId, 1, narrativeOutput);
+    }
+    
     mission.agentOutputs[1] = narrativeOutput;
     mission.logs.push('[Narrative Architect] Narrative arc outlined.');
     io.to(missionId).emit('mission-log', { log: '[Narrative Architect] Narrative Blueprint completed.', progress: 28 });
@@ -64,7 +84,15 @@ async function runActualMission(missionId, topic, platform, io, activeMissions) 
     io.to(missionId).emit('agent-start', { agentIndex: 2, agentName: 'Carousel Planner' });
     io.to(missionId).emit('mission-log', { log: '[Carousel Planner] Outlining slides blueprints...', progress: 35 });
     
-    const planOutput = await plannerAgent.generatePlan(narrativeOutput, researchOutput);
+    let planOutput;
+    if (cache[2]) {
+      console.log(`[MissionManager] Loaded Agent 2 output from cache.`);
+      planOutput = cache[2];
+    } else {
+      planOutput = await plannerAgent.generatePlan(narrativeOutput, researchOutput);
+      saveAgentOutputToCache(missionId, 2, planOutput);
+    }
+    
     mission.agentOutputs[2] = planOutput;
     mission.logs.push('[Carousel Planner] Slide layout structure planned.');
     io.to(missionId).emit('mission-log', { log: '[Carousel Planner] Storyboard drafted.', progress: 42 });
@@ -77,7 +105,15 @@ async function runActualMission(missionId, topic, platform, io, activeMissions) 
     io.to(missionId).emit('agent-start', { agentIndex: 3, agentName: 'Carousel Writer' });
     io.to(missionId).emit('mission-log', { log: '[Carousel Writer] Drafting copy deck slides...', progress: 50 });
     
-    const copyDeck = await writerAgent.generateCopy(planOutput);
+    let copyDeck;
+    if (cache[3]) {
+      console.log(`[MissionManager] Loaded Agent 3 output from cache.`);
+      copyDeck = cache[3];
+    } else {
+      copyDeck = await writerAgent.generateCopy(planOutput);
+      saveAgentOutputToCache(missionId, 3, copyDeck);
+    }
+    
     mission.agentOutputs[3] = copyDeck;
     mission.caption = copyDeck.caption;
     mission.hashtags = copyDeck.hashtags;
@@ -92,7 +128,15 @@ async function runActualMission(missionId, topic, platform, io, activeMissions) 
     io.to(missionId).emit('agent-start', { agentIndex: 4, agentName: 'Creative Director' });
     io.to(missionId).emit('mission-log', { log: '[Creative Director] Formulating overall artistic vision...', progress: 65 });
     
-    const creativeBrief = await creativeAgent.generateCreativeBrief(copyDeck, planOutput);
+    let creativeBrief;
+    if (cache[4]) {
+      console.log(`[MissionManager] Loaded Agent 4 output from cache.`);
+      creativeBrief = cache[4];
+    } else {
+      creativeBrief = await creativeAgent.generateCreativeBrief(copyDeck, planOutput);
+      saveAgentOutputToCache(missionId, 4, creativeBrief);
+    }
+    
     mission.agentOutputs[4] = creativeBrief;
     mission.logs.push('[Creative Director] Visual guidelines and typography philosophy outlined.');
     io.to(missionId).emit('mission-log', { log: '[Creative Director] Done drafting Creative Direction Brief.', progress: 71 });
@@ -105,7 +149,15 @@ async function runActualMission(missionId, topic, platform, io, activeMissions) 
     io.to(missionId).emit('agent-start', { agentIndex: 5, agentName: 'Image Prompt Director' });
     io.to(missionId).emit('mission-log', { log: '[Image Prompt Director] Writing DALL-E prompts...', progress: 78 });
     
-    const imageResults = await imageAgent.generateImages(creativeBrief, copyDeck);
+    let imageResults;
+    if (cache[5]) {
+      console.log(`[MissionManager] Loaded Agent 5 output from cache.`);
+      imageResults = cache[5];
+    } else {
+      imageResults = await imageAgent.generateImages(creativeBrief, copyDeck);
+      saveAgentOutputToCache(missionId, 5, imageResults);
+    }
+    
     mission.agentOutputs[5] = imageResults.promptPack;
     mission.logs.push('[Image Prompt Director] Slide background graphics generated via DALL-E.');
     io.to(missionId).emit('mission-log', { log: '[Image Prompt Director] Image prompts and assets ready.', progress: 85 });
@@ -118,15 +170,23 @@ async function runActualMission(missionId, topic, platform, io, activeMissions) 
     io.to(missionId).emit('agent-start', { agentIndex: 6, agentName: 'Layout Designer' });
     io.to(missionId).emit('mission-log', { log: '[Layout Designer] Compiling final slides structure...', progress: 92 });
     
-    const layoutSpec = await layoutAgent.generateLayoutSpec(copyDeck, creativeBrief, imageResults.promptPack);
+    let layoutSpec;
+    if (cache[6]) {
+      console.log(`[MissionManager] Loaded Agent 6 output from cache.`);
+      layoutSpec = cache[6];
+    } else {
+      layoutSpec = await layoutAgent.generateLayoutSpec(copyDeck, creativeBrief, imageResults.promptPack);
+      saveAgentOutputToCache(missionId, 6, layoutSpec);
+    }
+    
     mission.agentOutputs[6] = layoutSpec;
     mission.logs.push('[Layout Designer] Final publication layout spec completed.');
 
-    // Map slides together with their respective DALL-E generated images
+    // Map slides together with their respective generated images
     mission.slides = copyDeck.slides.map((slide, idx) => ({
       title: slide.title,
       body: slide.body,
-      image: imageResults.imageUrls[idx] || `https://images.unsplash.com/photo-1545128485-c400e7702796?w=600&q=80`
+      image: imageResults.imageUrls[idx] 
     }));
 
     io.to(missionId).emit('mission-log', { log: '[Layout Designer] All slide layouts fully constructed.', progress: 100 });
