@@ -48,10 +48,10 @@ class BaseAgent {
         this.loadPrompt();
       }
 
-      console.log(`[${this.name}] Starting execution on OpenRouter (openrouter/free) with temperature ${temperature}...`);
+      console.log(`[${this.name}] Starting execution on OpenRouter (google/gemini-2.5-flash) with temperature ${temperature}...`);
       
       const response = await openai.chat.completions.create({
-        model: 'openrouter/free',
+        model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'user', content: `${this.systemPrompt}\n\nUser Input:\n${userInput}` }
         ],
