@@ -17,6 +17,7 @@ export default function App() {
   const [logs, setLogs] = useState([]);
   const [agentOutputs, setAgentOutputs] = useState({}); // Stores output text/JSON from each agent
   const [selectedOutput, setSelectedOutput] = useState(null); // Active output shown in Modal
+  const [runningStepIdx, setRunningStepIdx] = useState(-1);
   
   // Results from generation
   const [slides, setSlides] = useState([]);
@@ -50,7 +51,8 @@ export default function App() {
     setLogs([]);
     setProgress(0);
     setCurrentAgentIndex(-1);
-    setStatus('Launching');
+    setStatus('Running');
+    setAgentOutputs({});
     
     try {
       const res = await fetch(`${BACKEND_URL}/api/missions`, {
@@ -85,11 +87,9 @@ export default function App() {
           }
         });
 
-        console.log("starting the agent");
         socketRef.current.on('agent-start', ({ agentIndex }) => {
           setCurrentAgentIndex(agentIndex);
           console.log(agentIndex);
-          setStatus('Running');
         });
 
         socketRef.current.on('agent-complete', ({ agentIndex, output }) => {
@@ -118,6 +118,51 @@ export default function App() {
       alert('Error connecting to backend server');
       setStatus('Failed');
     }
+  };
+
+  const handleRunStep = async (agentIdx) => {
+    setRunningStepIdx(agentIdx);
+    setLogs((prev) => [...prev, `[System] Executing Agent ${agentIdx + 1} (${agentsList[agentIdx]})...`]);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/missions/${missionId}/run-step`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentIndex: agentIdx, topic, platform })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setAgentOutputs((prev) => ({ ...prev, [agentIdx]: data.output }));
+        setLogs((prev) => [...prev, `[System] Agent ${agentIdx + 1} completed successfully.`]);
+        
+        // Calculate progress increment
+        setProgress(Math.round(((agentIdx + 1) / 7) * 100));
+
+        if (agentIdx === 6) {
+          setStatus('Completed');
+          setProgress(100);
+          
+          const missionRes = await fetch(`${BACKEND_URL}/api/missions/${missionId}`);
+          if (missionRes.ok) {
+            const missionData = await missionRes.json();
+            setSlides(missionData.slides);
+            setCaption(missionData.caption);
+            setHashtags(missionData.hashtags);
+          }
+        }
+      } else {
+        alert(data.error || 'Failed to run agent step');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error running agent step');
+    } finally {
+      setRunningStepIdx(-1);
+    }
+  };
+
+  const handleProceed = (idx) => {
+    setCurrentAgentIndex(idx + 1);
+    setLogs((prev) => [...prev, `[System] Verified Agent ${idx + 1} output. Proceeded to Agent ${idx + 2} (${agentsList[idx + 1]}).`]);
   };
 
   const handleEditSlide = (index, field, value) => {
@@ -247,9 +292,9 @@ export default function App() {
 
                 <div className="row g-3 mb-4">
                   {agentsList.map((agentName, idx) => {
-                    const isCompleted = idx < currentAgentIndex || (status === 'Completed' && idx < 4);
-                    const isActive = currentAgentIndex === idx && status === 'Running';
-                    const hasOutput = agentOutputs[idx] !== undefined;
+                    const isCompleted = agentOutputs[idx] !== undefined;
+                    const isActive = (currentAgentIndex === -1 && idx === 0) || currentAgentIndex === idx;
+                    const isRunning = runningStepIdx === idx;
 
                     return (
                       <div key={idx} className="col-md-3">
@@ -264,30 +309,67 @@ export default function App() {
                               color: isCompleted ? 'var(--success-color)' : isActive ? 'var(--warning-color)' : 'var(--text-secondary)',
                               fontSize: '0.75rem' 
                             }}>
-                              {isCompleted ? '● Completed' : isActive ? '● Running' : '○ Waiting'}
+                              {isCompleted ? '● Completed' : isRunning ? '● Running' : isActive ? '● Active' : '○ Waiting'}
                             </span>
                           </div>
                           <h6 className="text-white mb-2" style={{ fontSize: '0.9rem' }}>{agentName}</h6>
                           
-                          {hasOutput ? (
-                            <button 
-                              type="button" 
-                              className="btn btn-sm btn-outline-primary mt-auto w-100 py-1"
-                              style={{ fontSize: '0.75rem' }}
-                              onClick={() => setSelectedOutput({ name: agentName, content: agentOutputs[idx] })}
-                            >
-                              👁️ View Output
-                            </button>
-                          ) : (
-                            <button 
-                              type="button" 
-                              className="btn btn-sm btn-outline-secondary mt-auto w-100 py-1" 
-                              style={{ fontSize: '0.75rem' }} 
-                              disabled
-                            >
-                              Waiting...
-                            </button>
-                          )}
+                          <div className="mt-auto d-flex flex-column gap-2">
+                            {isCompleted && (
+                              <button 
+                                type="button" 
+                                className="btn btn-sm btn-outline-primary w-100 py-1"
+                                style={{ fontSize: '0.75rem' }}
+                                onClick={() => setSelectedOutput({ name: agentName, content: agentOutputs[idx] })}
+                              >
+                                👁️ View Output
+                              </button>
+                            )}
+
+                            {isActive && !isCompleted && !isRunning && (
+                              <button 
+                                type="button" 
+                                className="btn btn-sm btn-primary-custom w-100 py-1"
+                                style={{ fontSize: '0.75rem' }}
+                                onClick={() => handleRunStep(idx)}
+                              >
+                                ⚡ Run Agent
+                              </button>
+                            )}
+
+                            {isRunning && (
+                              <button 
+                                type="button" 
+                                className="btn btn-sm btn-outline-warning w-100 py-1" 
+                                style={{ fontSize: '0.75rem' }} 
+                                disabled
+                              >
+                                ⏳ Running...
+                              </button>
+                            )}
+
+                            {isCompleted && isActive && idx < 6 && (
+                              <button 
+                                type="button" 
+                                className="btn btn-sm btn-success w-100 py-1" 
+                                style={{ fontSize: '0.75rem' }}
+                                onClick={() => handleProceed(idx)}
+                              >
+                                Proceed ➡️
+                              </button>
+                            )}
+
+                            {!isActive && !isCompleted && (
+                              <button 
+                                type="button" 
+                                className="btn btn-sm btn-outline-secondary w-100 py-1" 
+                                style={{ fontSize: '0.75rem' }} 
+                                disabled
+                              >
+                                Waiting...
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );

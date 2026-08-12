@@ -55,8 +55,17 @@ app.post('/api/missions', (req, res) => {
 
   const missionId = `MSN-${Date.now()}`;
   
-  // Start actual mission asynchronously
-  runActualMission(missionId, topic, platform || 'Instagram Carousel', io, activeMissions);
+  activeMissions[missionId] = {
+    id: missionId,
+    topic,
+    platform: platform || 'Instagram Carousel',
+    status: 'Running',
+    progress: 0,
+    currentAgentIndex: -1,
+    logs: ['[MissionManager] Mission initialized in manual mode.'],
+    slides: [],
+    agentOutputs: {}
+  };
 
   res.status(202).json({
     message: 'Mission launched successfully.',

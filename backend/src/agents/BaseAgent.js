@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const openai = require('../config/openrouter');
+const ai = require('../config/gemini');
 
 class BaseAgent {
   /**
@@ -35,11 +35,11 @@ class BaseAgent {
   }
 
   /**
-   * Executes the agent's prompt using OpenRouter.
+   * Executes the agent's prompt using Gemini SDK.
    * @param {string} userInput - The input topic or previous agent's output.
    * @param {boolean} jsonMode - Set to true if this agent must output structured JSON data.
    * @param {number} temperature - Controlling creativity/hallucinations (default 0.2)
-   * @returns {Promise<string|object>} - The completed content from OpenRouter.
+   * @returns {Promise<string|object>} - The completed content from Gemini.
    */
   async execute(userInput, jsonMode = false, temperature = 0.2) {
     try {
@@ -48,18 +48,20 @@ class BaseAgent {
         this.loadPrompt();
       }
 
-      console.log(`[${this.name}] Starting execution on OpenRouter (google/gemini-2.5-flash) with temperature ${temperature}...`);
+      console.log(`[${this.name}] Starting execution on gemini-2.5-flash with temperature ${temperature}...`);
       
-      const response = await openai.chat.completions.create({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'user', content: `${this.systemPrompt}\n\nUser Input:\n${userInput}` }
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [
+          { role: 'user', parts: [{ text: `${this.systemPrompt}\n\nUser Input:\n${userInput}` }] }
         ],
-        temperature: temperature,
-        response_format: jsonMode ? { type: 'json_object' } : undefined
+        config: {
+          temperature: temperature,
+          responseMimeType: jsonMode ? 'application/json' : 'text/plain'
+        }
       });
 
-      const text = response.choices[0].message.content;
+      const text = response.text;
 
       if (jsonMode) {
         try {
