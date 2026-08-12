@@ -3,7 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 require('dotenv').config();
-const { runActualMission } = require('./services/missionManager');
+const { runActualMission, runSingleAgentStep } = require('./services/missionManager');
 
 const app = express();
 const server = http.createServer(app);
@@ -62,6 +62,30 @@ app.post('/api/missions', (req, res) => {
     message: 'Mission launched successfully.',
     missionId
   });
+});
+
+app.post('/api/missions/:id/run-step', async (req, res) => {
+  const { id } = req.params;
+  const { agentIndex, topic, platform } = req.body;
+
+  if (agentIndex === undefined || agentIndex === null) {
+    return res.status(400).json({ error: 'agentIndex is required.' });
+  }
+
+  try {
+    const output = await runSingleAgentStep(id, agentIndex, topic, platform || 'Instagram Carousel', io, activeMissions);
+    res.json({
+      success: true,
+      agentIndex,
+      output
+    });
+  } catch (error) {
+    console.error(`[Server] Error running single agent step:`, error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
 });
 
 app.get('/api/missions/:id', (req, res) => {

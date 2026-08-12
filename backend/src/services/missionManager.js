@@ -207,4 +207,91 @@ async function runActualMission(missionId, topic, platform, io, activeMissions) 
   }
 }
 
-module.exports = { runActualMission };
+/**
+ * Runs a single agent step manually.
+ */
+async function runSingleAgentStep(missionId, agentIndex, topic, platform, io, activeMissions) {
+  const cache = getMissionCache(missionId);
+  
+  if (!activeMissions[missionId]) {
+    activeMissions[missionId] = {
+      id: missionId,
+      topic,
+      platform,
+      status: 'Running',
+      progress: 0,
+      currentAgentIndex: agentIndex,
+      logs: [],
+      slides: [],
+      agentOutputs: {}
+    };
+  }
+  const mission = activeMissions[missionId];
+  mission.currentAgentIndex = agentIndex;
+
+  let output;
+  switch (Number(agentIndex)) {
+    case 0:
+      console.log(`[MissionManager] Manually running Agent 0 (Research Agent) for mission ${missionId}...`);
+      io.to(missionId).emit('agent-start', { agentIndex: 0, agentName: 'Research Agent' });
+      output = await researchAgent.generateResearch(topic);
+      break;
+    case 1:
+      console.log(`[MissionManager] Manually running Agent 1 (Narrative Architect) for mission ${missionId}...`);
+      io.to(missionId).emit('agent-start', { agentIndex: 1, agentName: 'Narrative Architect' });
+      if (!cache[0]) throw new Error('Missing input from Agent 0 (Scriptural Research)');
+      output = await narrativeAgent.generateNarrative(cache[0]);
+      break;
+    case 2:
+      console.log(`[MissionManager] Manually running Agent 2 (Carousel Planner) for mission ${missionId}...`);
+      io.to(missionId).emit('agent-start', { agentIndex: 2, agentName: 'Carousel Planner' });
+      if (!cache[0] || !cache[1]) throw new Error('Missing input from Agent 0 or Agent 1');
+      output = await plannerAgent.generatePlan(cache[1], cache[0]);
+      break;
+    case 3:
+      console.log(`[MissionManager] Manually running Agent 3 (Carousel Writer) for mission ${missionId}...`);
+      io.to(missionId).emit('agent-start', { agentIndex: 3, agentName: 'Carousel Writer' });
+      if (!cache[2]) throw new Error('Missing input from Agent 2 (Storyboard Plan)');
+      output = await writerAgent.generateCopy(cache[2]);
+      break;
+    case 4:
+      console.log(`[MissionManager] Manually running Agent 4 (Creative Director) for mission ${missionId}...`);
+      io.to(missionId).emit('agent-start', { agentIndex: 4, agentName: 'Creative Director' });
+      if (!cache[3] || !cache[2]) throw new Error('Missing input from Agent 3 or Agent 2');
+      output = await creativeAgent.generateCreativeBrief(cache[3], cache[2]);
+      break;
+    case 5:
+      console.log(`[MissionManager] Manually running Agent 5 (Image Prompt Director) for mission ${missionId}...`);
+      io.to(missionId).emit('agent-start', { agentIndex: 5, agentName: 'Image Prompt Director' });
+      if (!cache[4] || !cache[3]) throw new Error('Missing input from Agent 4 or Agent 3');
+      output = await imageAgent.generateImages(cache[4], cache[3]);
+      break;
+    case 6:
+      console.log(`[MissionManager] Manually running Agent 6 (Layout Designer) for mission ${missionId}...`);
+      io.to(missionId).emit('agent-start', { agentIndex: 6, agentName: 'Layout Designer' });
+      if (!cache[3] || !cache[4] || !cache[5]) throw new Error('Missing input from Agent 3, 4, or 5');
+      const promptPack = cache[5].promptPack || cache[5];
+      output = await layoutAgent.generateLayoutSpec(cache[3], cache[4], promptPack);
+      
+      // Update slides and map them with images
+      mission.slides = cache[3].slides.map((slide, idx) => ({
+        title: slide.title,
+        body: slide.body,
+        image: cache[5].imageUrls ? cache[5].imageUrls[idx] : ''
+      }));
+      break;
+    default:
+      throw new Error(`Invalid agentIndex: ${agentIndex}`);
+  }
+
+  // Save output to cache
+  saveAgentOutputToCache(missionId, agentIndex, output);
+  
+  // Update state and notify sockets
+  mission.agentOutputs[agentIndex] = output;
+  io.to(missionId).emit('agent-complete', { agentIndex, output });
+  
+  return output;
+}
+
+module.exports = { runActualMission, runSingleAgentStep };
