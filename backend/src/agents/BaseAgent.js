@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const ai = require('../config/gemini');
+const openrouter = require('../config/openrouter');
+const groq = require('../config/groq');
 
 class BaseAgent {
   /**
@@ -11,6 +13,8 @@ class BaseAgent {
     this.name = name;
     this.agentFolderName = agentFolderName;
     this.systemPrompt = '';
+    this.model = 'gemini-3.5-flash';
+    this.provider = 'gemini'; // 'gemini' | 'openrouter' | 'groq'
   }
 
   /**
@@ -48,20 +52,34 @@ class BaseAgent {
         this.loadPrompt();
       }
 
-      console.log(`[${this.name}] Starting execution on gemini-2.5-flash with temperature ${temperature}...`);
+      console.log(`[${this.name}] Starting execution on ${this.model} (${this.provider}) with temperature ${temperature}...`);
       
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [
-          { role: 'user', parts: [{ text: `${this.systemPrompt}\n\nUser Input:\n${userInput}` }] }
-        ],
-        config: {
+      let text;
+      if (this.provider === 'openrouter' || this.provider === 'groq' || this.model.includes('/')) {
+        const client = this.provider === 'groq' ? groq : openrouter;
+        const response = await client.chat.completions.create({
+          model: this.model,
+          messages: [
+            { role: 'system', content: this.systemPrompt },
+            { role: 'user', content: userInput }
+          ],
           temperature: temperature,
-          responseMimeType: jsonMode ? 'application/json' : 'text/plain'
-        }
-      });
-
-      const text = response.text;
+          response_format: jsonMode ? { type: 'json_object' } : undefined
+        });
+        text = response.choices[0].message.content;
+      } else {
+        const response = await ai.models.generateContent({
+          model: this.model,
+          contents: [
+            { role: 'user', parts: [{ text: `${this.systemPrompt}\n\nUser Input:\n${userInput}` }] }
+          ],
+          config: {
+            temperature: temperature,
+            responseMimeType: jsonMode ? 'application/json' : 'text/plain'
+          }
+        });
+        text = response.text;
+      }
 
       if (jsonMode) {
         try {
